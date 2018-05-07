@@ -1,0 +1,19 @@
+language: node_js
+node_js:
+- 6.9.1
+cache:
+  yarn: true
+  directories:
+  - node_modules
+script:
+- yarn run test:coverage
+- yarn run build
+deploy:
+  provider: npm
+  skip_cleanup: true
+  email: gokulnathreddy.y@gmail.com
+  api_key:
+    secure: FFEAyeTJvWwFGsOSXf15aH3n+agzwIpp1LYnixTXP06dRLvF6dxWStula/HjikYiwfPVEONnKUQg6n4bPN96J3AXRd63ARZ0E67+0kFQGd2D6EnjcfzXT9HgCAY7/V0mTupXBsDOPVJbQOWx9ahb5PDOHwOFqzLdri2FfydICjYR5k+DL6GC6KE/87k7a7JlBDyc5flVZ9u+/m0TrzkwcIInU6EPPHNFP5yQAU3UVdlluPByR04JoC9bGscJUAFsGMo3KyYoOly2US8iT61Ia57N/Te518/3AVEunzJyWkRajUB+xb2fuDLj+gdaNbVccE+uWM4X4xV56A1WtroFtnaYZTmYWFocqE8hjY3hdBIWSD7bfT0sMEzu5ImQy92gijVUwqSn0gB7rmD2F7q6L9CRGP1Y73tqGUEodyByRHebAaQmYQVqUTOpX4vVnYa+rKE8wBlpnm8sLbQC4xj/QymQNddN8wRNWnNflTPiPcBC7uqKyrMlhCBuiORiZ0W2CQI2AsrpHyDBOkIj33MSRaxjloTaFlNXDSWp5IuyZY8myoT0eYBm7UPMtCkceec4YhE1P62Z2NMG6CQ/rIUhi5dnSQbJgGMFovJx1p4WJ5vHH9t0ik2Mvw6MMNxyRum0IvxoBXqtD0NgEUJGEhCy5hFTWSTNYerpxABqxvY7Hyg=
+  on:
+    repo: ygnr/npm-module-es6-boilerplate
+    branch: master

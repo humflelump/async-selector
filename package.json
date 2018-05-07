@@ -1,0 +1,53 @@
+{
+  "name": "async-selector",
+  "version": "1.0.3",
+  "description": "Select values from databases using asynchronous selectors.",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "./node_modules/.bin/babel -d dist src/",
+    "test": "jest",
+    "test:coverage": "jest --coverage && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
+    "prepublish": "npm run test && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/humflelump/async-selector.git"
+  },
+  "keywords": [
+    "es6",
+    "boilerplate",
+    "npm",
+    "module",
+    "npm-module"
+  ],
+  "author": "Mark Metgzer markmetzger@utexas.edu",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/humflelump/async-selector/issues"
+  },
+  "homepage": "https://github.com/humflelump/async-selector#readme",
+  "dependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-jest": "^20.0.3",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "coveralls": "^2.13.1",
+    "jest-cli": "^20.0.4"
+  },
+  "devDependencies": {
+    "jest": "^20.0.4"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 90,
+        "branches": 90,
+        "functions": 90,
+        "lines": 90
+      }
+    }
+  }
+}
