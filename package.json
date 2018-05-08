@@ -14,11 +14,11 @@
     "url": "git+https://github.com/humflelump/async-selector.git"
   },
   "keywords": [
-    "es6",
-    "boilerplate",
-    "npm",
-    "module",
-    "npm-module"
+    "async",
+    "selector",
+    "redux",
+    "reselect",
+    "react"
   ],
   "author": "Mark Metgzer markmetzger@utexas.edu",
   "license": "MIT",

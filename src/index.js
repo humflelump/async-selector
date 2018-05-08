@@ -45,9 +45,9 @@ function createAsyncSelector(params, ...selectors) {
     let oldInputs = null;
     let previousResolution = undefined;
 
-    const func = (state) => {
+    const func = (state, forceUpdate = false) => {
         const mapped = selectors.map(f => f(state));
-        const changed = hasChanged(oldInputs, mapped);
+        const changed = forceUpdate || hasChanged(oldInputs, mapped);
         if (changed) {
             if (isPromisePending) {
                 onCancel(promise, ...oldInputs);
