@@ -120,8 +120,22 @@ const params2 = {
 }
 const employeeAges = createAsyncSelector(params2, [employees]);
 ```
+
+### Handling stateful APIs
+Generally, a basic assumption of a selector is the function is pure - the inputs fully determine the output. Unfortunately, that is an assumption can't always be made when querying a database. For example, you might have a button that allows the user to refresh the data if the user is worried the data was changed. Fortunately, this isn't actually a big issue thanks to the "forceUpdate" parameter!
+
+```
+function buttonClicked() {
+  employeeAges(store.getState(), true) // "true" indicates that the selector should create a new promise regardless of whether the inputs changed
+}
+```
+
+By passing true as the second parameter of the selector, the selector will be called as if the inputs changed thus automatically creating a new promise.
+
+
 # Documentation
 createAsyncSelector takes in two arguments: 
+
 ```
 function createAsyncSelector(params, ...selectors) -> obj
 ```
@@ -136,7 +150,10 @@ It outputs an object with the following form:
 }
 ```
 ## selectors
-Each selector is a function that takes in state as its argument just like in reselect. It memoizes its results so the only way for it to return a different value for the same inputs is if it contained a promise that was resolved.
+Each selector is a function that takes in state as its argument just like in reselect. It memoizes its results so the only way for it to return a different value for the same inputs is if it contained a promise that was resolved. An async selector is only different from a normal selector in that you can pass in "forceUpdate" bool as the second parameter to force a promise to be made.
+```
+function selector(state, forceUpdate=false) -> any
+```
 ## params
 params is an object
 ### params.sync (Required)
