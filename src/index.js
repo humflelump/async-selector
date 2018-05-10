@@ -32,36 +32,52 @@ function createAsyncSelector(params, ...selectors) {
     validateParams(params);
 
     // User inputs
-    let {sync, async, onReject, onResolve, onCancel, shouldUseAsync, omitStatus} = params;
+    let {sync, async, onReject, onResolve, onCancel, shouldUseAsync, omitStatus, throttle} = params;
     onReject = typeof onReject === 'function' ? onReject : emptyFunction;
     onResolve = typeof onResolve === 'function' ? onResolve : emptyFunction;
     onCancel = typeof onCancel === 'function' ? onCancel : emptyFunction;
     shouldUseAsync = typeof shouldUseAsync === 'function' ? shouldUseAsync : () => true;
     omitStatus = omitStatus === undefined ? false : omitStatus;
+    throttle = typeof throttle === 'function' ? throttle : null;
 
     //selector state
     let memoizedResult = null;
     let isPromisePending = false;
     let oldInputs = null;
     let previousResolution = undefined;
+    let f = null;
 
-    const func = (state, forceUpdate = false) => {
+    const func = (state, forceUpdate = false, internal = false) => {
         const mapped = selectors.map(f => f(state));
         const changed = forceUpdate || hasChanged(oldInputs, mapped);
+        //console.log(changed, mapped, internal)
         if (changed) {
+            
+            /*  Handle throttling / debouncing if required */
+            if (throttle !== null && f === null) {
+                f = throttle((state) => func(state, true, true));
+            }
+            if (f !== null && internal === false) {
+                f(state, forceUpdate);
+                memoizedResult = createResultObject(sync(...mapped), previousResolution, true, false, false, omitStatus);
+                return memoizedResult;
+            }
+            /* //////////////////////////////////////////// */
+            
             if (isPromisePending) {
                 onCancel(promise, ...oldInputs);
             }
             oldInputs = mapped;
-            
-            memoizedResult = createResultObject(sync(mapped), previousResolution, true, false, false, omitStatus);
+
+            memoizedResult = createResultObject(sync(...mapped), previousResolution, true, false, false, omitStatus);
             
             if (!shouldUseAsync(...mapped)) {
                 return memoizedResult;
             }
-            const promise = params.async(mapped);
+            const promise = params.async(...mapped);
             isPromisePending = true;
             promise.then((promiseResolution) => {
+                //console.log('resolution', promiseResolution, hasChanged(oldInputs, mapped))
                 if (!hasChanged(oldInputs, mapped)) {
                     previousResolution = promiseResolution;
                     isPromisePending = false;
