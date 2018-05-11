@@ -329,7 +329,7 @@ test('debounce', done => {
 test('throttle', done => {
   let c = 0;
   const throttle = f => _.throttle(f, 200);
-  const onResolve = (val) => {console.log(val); c += 1;};
+  const onResolve = (val) => {c += 1;};
   const employees = createAsyncSelector({...params, onResolve, throttle}, state => state.text);
   employees({text: 'a'});
   setTimeout(() => {
@@ -676,7 +676,6 @@ test('debounced memoized 4', done => {
           ages(state);
           setTimeout(() => {
             const result = ages(n);
-            console.log(result);
             try {
               expect(deepEqual(expected, result)).toBe(true);
             } catch (e) {
@@ -733,4 +732,60 @@ test('debounced memoized 5', done => {
       }, 88);
     }, 80);
   }, 180);
+});
+
+test('cancel result', () => {
+  let state = {employees: ['Mark Metzger'], maxAge: 10};
+  let result = null
+  const onCancel = (promise, n, a) => {result=[n,a]}
+  const ages = createAsyncSelector(
+    {...params2, onCancel }, 
+    s => s.employees, 
+    s => s.maxAge);
+
+  ages(state);
+  ages({employees: ['Mark Metzger'], maxAge: 11});
+  expect(deepEqual(result, [['Mark Metzger'], 10])).toBe(true);
+});
+
+test('resolve result', done => {
+  let state = {employees: ['Mark Metzger'], maxAge: 10};
+  let result = null
+  const onResolve = (r, n, a) => {result=[r,n,a]}
+  const ages = createAsyncSelector(
+    {...params2, onResolve }, 
+    s => s.employees, 
+    s => s.maxAge);
+
+  ages(state);
+  ages(state);
+  setTimeout(() => {
+    try {
+      expect(deepEqual(result, [[], ['Mark Metzger'], 10])).toBe(true);
+    } catch (e) {
+      done.fail(e)
+    }
+    done();
+  }, 200);
+});
+
+test('reject result', done => {
+  let state = {employees: ['Mark Metzger'], maxAge: 1};
+  let result = null
+  const onReject = (r, n, a) => {result=[r,n,a]}
+  const ages = createAsyncSelector(
+    {...params2, onReject }, 
+    s => s.employees, 
+    s => s.maxAge);
+
+  ages(state);
+  ages(state);
+  setTimeout(() => {
+    try {
+      expect(deepEqual(result, ['too young', ['Mark Metzger'], 1])).toBe(true);
+    } catch (e) {
+      done.fail(e)
+    }
+    done();
+  }, 200);
 });

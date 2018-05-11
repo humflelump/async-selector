@@ -146,6 +146,13 @@ const params = {
 ```
 Internally, a debounced version of the selector is generated and it is (recursively) called every time the selector is called (if the inputs were changed).
 
+### Avoiding over-rendering
+A useful feature of using an async selector is that every time a new set of inputs are used, it immediately returns a default value. This avoids the dangerous bug of having data show up that looks correct while the promise is waiting to be resolved. However, in some cases flipping between a default value and a resolved value is undesirable. For example, if the user is typing and the search suggestions are constantly appearing and disappearing, it could be jarring. The simple solution is to use ".previous" instead ".value". "previous" is initially undefined, but otherwise it is the result of the most recent promise resolution.
+```js
+const searchResults = createAsyncSelector(params, searchText);
+console.log('results:', searchResults(store.getState()).previous || [])
+// previous === value when isResolved is true.
+```
 
 # Documentation
 createAsyncSelector takes in two arguments: 

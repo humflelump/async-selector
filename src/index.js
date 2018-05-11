@@ -50,9 +50,7 @@ function createAsyncSelector(params, ...selectors) {
     const func = (state, forceUpdate = false, internal = false) => {
         const mapped = selectors.map(f => f(state));
         const changed = forceUpdate || hasChanged(oldInputs, mapped);
-        //console.log(changed, mapped, internal)
         if (changed) {
-            
             /*  Handle throttling / debouncing if required */
             if (throttle !== null && f === null) {
                 f = throttle((state) => func(state, true, true));
@@ -77,7 +75,6 @@ function createAsyncSelector(params, ...selectors) {
             const promise = params.async(...mapped);
             isPromisePending = true;
             promise.then((promiseResolution) => {
-                //console.log('resolution', promiseResolution, hasChanged(oldInputs, mapped))
                 if (!hasChanged(oldInputs, mapped)) {
                     previousResolution = promiseResolution;
                     isPromisePending = false;
