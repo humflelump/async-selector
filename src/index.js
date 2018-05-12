@@ -47,14 +47,11 @@ function createAsyncSelector(params, ...selectors) {
     let previousResolution = undefined;
     let f = null;
 
-    const func = (state, forceUpdate = false, internal = false) => {
-        const mapped = selectors.map(f => f(state));
+    const func = (state, props, forceUpdate = false, internal = false) => {
+        const mapped = selectors.map(f => f(state, props));
         const changed = forceUpdate || hasChanged(oldInputs, mapped);
         if (changed) {
             /*  Handle throttling / debouncing if required */
-            if (throttle !== null && f === null) {
-                f = throttle((state) => func(state, true, true));
-            }
             if (f !== null && internal === false) {
                 f(state, forceUpdate);
                 memoizedResult = createResultObject(sync(...mapped), previousResolution, true, false, false, omitStatus);
@@ -92,6 +89,12 @@ function createAsyncSelector(params, ...selectors) {
 		// If the inputs didn't change, simply return the old memoized result
         return memoizedResult;
     };
+    if (throttle !== null && f === null) {
+        f = throttle((state, props) => func(state, props, true, true));
+    }
+    func.forceUpdate = (state, props) => {
+        return func(state, props, true, false);
+    }
     return func;
 }
 

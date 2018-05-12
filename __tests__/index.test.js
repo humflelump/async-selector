@@ -154,8 +154,8 @@ test('lack of memoization', () => {
 
   count = 0;
   employees(state);
-  employees(state, true);
-  employees(state, true);
+  employees.forceUpdate(state);
+  employees.forceUpdate(state);
   expect(count).toBe(3);
 });
 
@@ -165,8 +165,8 @@ test('cancel', () => {
 
   count = 0;
   employees(state);
-  employees(state, true);
-  employees(state, true);
+  employees.forceUpdate(state);
+  employees.forceUpdate(state);
   expect(count).toBe(2);
 });
 
@@ -176,9 +176,9 @@ test('cancel', done => {
 
   count = 0;
   employees(state);
-  employees(state, true);
+  employees.forceUpdate(state);
   setTimeout(() => {
-    employees(state, true);
+    employees.forceUpdate(state);
     try {
       expect(count).toBe(1);
     } catch (e) {
@@ -234,9 +234,9 @@ test('onResolve forceUpdate', done => {
   count = 0;
   employees(state);
   setTimeout(() => {
-    employees(state, true);
+    employees.forceUpdate(state);
     setTimeout(() => {
-      employees(state, true);
+      employees.forceUpdate(state);
       setTimeout(() => {
         try {
           expect(count).toBe(3);
@@ -257,7 +257,7 @@ test('onResolve', done => {
   setTimeout(() => {
     employees(state);
     setTimeout(() => {
-      employees(state, true);
+      employees.forceUpdate(state);
       setTimeout(() => {
         try {
           expect(count).toBe(2);
@@ -783,6 +783,29 @@ test('reject result', done => {
   setTimeout(() => {
     try {
       expect(deepEqual(result, ['too young', ['Mark Metzger'], 1])).toBe(true);
+    } catch (e) {
+      done.fail(e)
+    }
+    done();
+  }, 200);
+});
+
+test('throttled and forced', done => {
+  let state = {employees: ['Mark Metzger'], maxAge: 1};
+  let result = null
+  const throttle = f => _.debounce(f, 150);
+  const onCancel = (r, n, a) => {result=[r,n,a]}
+  const ages = createAsyncSelector(
+    {...params2, throttle, onCancel}, 
+    s => s.employees, 
+    s => s.maxAge);
+
+  ages(state);
+  ages.forceUpdate(state);
+  ages.forceUpdate(state);
+  setTimeout(() => {
+    try {
+      expect(deepEqual(result, null)).toBe(true);
     } catch (e) {
       done.fail(e)
     }

@@ -1,20 +1,25 @@
 A simple, lightweight library inspired by [reselect](https://github.com/reduxjs/reselect) which allows you select data out of a remote database almost as easily as you would from local state. This library will normally be used in conjunction with redux and reselect but it has no dependencies.
 
+# Installation
+```
+npm install --save async-selector
+```
+
 # What It solves
-A normal (naive) approach to handling fetching data from a database in redux would be
-- Initiate a request is response to some event (app loaded, component mounted, search text changed, etc)
-- dispatch an action to change a variable in state so you can render a loading message
-- handle a promise rejection in a similar way
-- handle a promise resolution by populating state with the new data
+A normal (naive) approach to handling fetching data from a database in redux would be:
+- Initiate a request in response to some event (app loaded, component mounted, search text changed, etc).
+- dispatch an action to change a variable in state so you can render a loading message.
+- handle a promise rejection in a similar way.
+- handle a promise resolution by populating state with the new data.
 
 ### Problems
 This way has many common problems that just about everybody has experienced.
 - An old request could potential overwrite the data of a newer request if you don't handle that edge case.
-- During the time between the request being sent and the response received, you might be rendering stale data.
-- Having many variables in state and associated actions/reducers for the query status is a lot of redundant, tedious code.
-- If you have requests that depend on previous responses, this could result in callback hell and/or difficulty in reuse of the first response's data.
+- During the time between the request being sent and the response received, you might be rendering stale data. In some cases, this can be a dangerous bug.
+- Having many state variables/actions/reducers/etc for every query is a lot of redundant, tedious code.
+- If you have requests that depend on previous responses, this could result in callback hell and/or difficulty in future reuse of the first response's data.
 - There is no guarantee that multiple duplicate requests won't be made.
-- Sending queries in response to user actions can result in brittle code and isn't really in the spirit of redux/reselect (Unless it's actually necessary). For example, if you call a function in a server based on many user inputs, you will have to write code to send a query for every input field.
+- Sending queries in response to user actions can result in brittle code and isn't really in the spirit of redux/reselect. For example, if you call a function in a server that uses many user inputs, you will have to write code to send a query for every input field. This scales poorly with the complexity of your application.
 
 # Async selectors to the rescue!
 Wouldn't it be awesome to be able treat data in database the same way you treat data in the local state? Well actually you can (almost)! An async selector is just like a normal selector except you pass in a function that returns a promise. Until the promise resolves, the selector returns a default value. But once it resolves, it returns the result of the promise. Any stale promises are automatically cancelled so you will always see up-to-date data.
@@ -86,7 +91,7 @@ When you call the new selector there are three types of values it could return, 
 }
 ```
 ### Usage in redux
-A serious problem with the above code is that when the promise resolves, the app doesn't re-render to show the new data. Instead of simply logging the employees in the onResolve callback, we need to dispatch an action to tell the app to re-render and call the selector. This is a bit of a hack because nothing in the state was changed. One thing to make sure of is that the action changes state in some way or a re-render event won't be triggered. Another thing to be careful to avoid is recursion resulting from the action causing the inputs of the selector to change.
+A serious problem with the above code is that when the promise resolves, the app doesn't re-render to show the new data. Instead of simply logging the employees in the onResolve callback, we need to dispatch an action to tell the app to re-render and call the selector and get the new value. This is a bit of a hack because nothing in the state was changed. One thing to make sure of is that the action changes state in some way or a re-render event won't be triggered. Another thing to be careful to avoid is recursion resulting from the action causing the inputs of the selector to change.
 
 ```js
 const triggerRerender = () => {
@@ -119,6 +124,7 @@ const params2 = {
   shouldUseAsync: (employees) => employees.isResolved === true,
 }
 const employeeAges = createAsyncSelector(params2, [employees]);
+console.log('Ages:', employeeAges(store.getState()))
 ```
 
 ### Handling stateful APIs
@@ -126,11 +132,11 @@ Generally, a basic assumption of a selector is the function is pure - the inputs
 
 ```js
 function buttonClicked() {
-  employeeAges(store.getState(), true) // "true" indicates that the selector should create a new promise regardless of whether the inputs changed
+  const result = employeeAges.forceUpdate(store.getState()) // the selector will create a new promise regardless of whether the inputs changed. It will always return an object in the "isWaiting" state.
 }
 ```
 
-By passing true as the second parameter of the selector, the selector will be called as if the inputs changed thus automatically creating a new promise.
+The selector will be called as if the inputs changed thus automatically creating a new promise. With this technique, an async selector could simply be treated like a memoized function and state variable combo.
 
 ### Throttling queries
 Often, you don't want to send queries too frequently. For example, if the user is typing into a textfield, you might only want to send a query after the user finished, so as to not spam the API. To solve this, you can use the "throttle" parameter.
@@ -154,6 +160,9 @@ console.log('results:', searchResults(store.getState()).previous || [])
 // previous === value when isResolved is true.
 ```
 
+### Usage across multiple instances of a component
+Just like in reselect, an async selector can take in two variables (for example, global state and component props). Reselect has examples of this [here](https://github.com/reduxjs/reselect#selectorstodoselectorsjs-1).
+
 # Documentation
 createAsyncSelector takes in two arguments: 
 
@@ -171,9 +180,10 @@ It outputs an object with the following form:
 }
 ```
 ## selectors
-Each selector is a function that takes in state as its argument just like in reselect. It memoizes its results so the only way for it to return a different value for the same inputs is if it contained a promise that was resolved. An async selector is only different from a normal selector in that you can pass in "forceUpdate" bool as the second parameter to force a promise to be made.
+Each selector is a function that takes in state (and optionally a second variable) as its argument just like in reselect. It memoizes its results so the only way for it to return a different value for the same inputs is if it contained a promise that was resolved. An async selector is only different from a normal selector in that you can call ".forceUpdate(state)" of state which will automatically create a new promise and return an object in the "isWaiting" state.
 ```js
-function selector(state, forceUpdate=false) -> any
+function selector(state, ?props) -> object
+selector.forceUpdate(state, ?props) -> object
 ```
 ## params
 params is an object
