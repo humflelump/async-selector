@@ -1,12 +1,12 @@
 function validateParams(params) {
     if (typeof params !== 'object' || params === null) {
-        throw new Exception('An object of parameters must be passed in');
+        throw new Error('An object of parameters must be passed in');
     }
     if (typeof params.sync !== 'function') {
-        throw new Exception('Looking for a function called "sync". This function is called to before the promise resolves');
+        throw new Error('Looking for a function called "sync". This function is called to before the promise resolves');
     }
     if (typeof params.async !== 'function') {
-        throw new Exception('Looking for a function called "async". This function returns a promise which handles asynchronous code');
+        throw new Error('Looking for a function called "async". This function returns a promise which handles asynchronous code');
     }
 }
 
@@ -95,6 +95,7 @@ function createAsyncSelector(params, ...selectors) {
     func.forceUpdate = (state, props) => {
         return func(state, props, true, false);
     }
+    func.getResult = () => memoizedResult;
     return func;
 }
 

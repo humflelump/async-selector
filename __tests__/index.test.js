@@ -812,3 +812,37 @@ test('throttled and forced', done => {
     done();
   }, 200);
 });
+
+test('Throw error', () => {
+  try {
+    createAsyncSelector();
+  } catch (e) {
+    expect(e.message).toBe('An object of parameters must be passed in');
+  }
+});
+
+test('selector.getResult', done => {
+  let c = 0;
+  let state = {employees: ['Mark Metzger'], maxAge: 10};
+  const ages = createAsyncSelector(params2, s => s.employees, s => s.maxAge);
+  const result = ages(state);
+
+  const expected = { 
+    value: [],
+    previous: [],
+    isWaiting: false,
+    isResolved: true,
+    isRejected: false, 
+  }
+
+  ages(state);
+  setTimeout(() => {
+    
+    try {
+      expect(deepEqual(ages.getResult(), expected)).toBe(true);
+    } catch (e) {
+      done.fail(e)
+    }
+    done();
+  }, 200);
+});
