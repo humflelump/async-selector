@@ -80,3 +80,27 @@ dist
 4.5 1.0
 1.0 100.0
 
+extends {
+constructor(props){
+super(props)
+whateverSelector = createSelector
+
+}
+}
+
+
+mapStateToProps(state, props) {
+const id = props.id;
+subState = state[props.id];
+	selector(subState)
+}
+
+export connect()(Component)
+
+
+// <Component id=1/> // tl1
+// <Component id=2/> // tl2
+
+component1: {},
+component2: {},
+

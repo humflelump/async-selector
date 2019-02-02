@@ -187,7 +187,7 @@ selector.forceUpdate(state, ?props) -> object
 ```
 ## params
 params is an object
-### params.sync (Required)
+### params.sync (Optional)
 ```js
 function sync(...selectorResults) -> any
 ```

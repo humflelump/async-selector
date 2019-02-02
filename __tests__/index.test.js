@@ -846,3 +846,77 @@ test('selector.getResult', done => {
     done();
   }, 200);
 });
+
+
+test('debounces only memoized version', done => {
+  let state = {employees: ['Mark Metzger'], maxAge: 15};
+  let result = null
+  const throttle = f => _.debounce(f, 150);
+  const ages = createAsyncSelector(
+    {...params2, throttle}, 
+    s => s.employees, 
+    s => s.maxAge);
+
+  const expected1 = { 
+    value: [],
+    previous: undefined,
+    isWaiting: true,
+    isResolved: false,
+    isRejected: false, 
+  }
+
+  const expected2 = { 
+    value: [12],
+    previous: [12],
+    isWaiting: false,
+    isResolved: true,
+    isRejected: false, 
+  }
+
+  const result1 = ages(state);
+  console.log({result1});
+  expect(deepEqual(result1, expected1)).toBe(true);
+
+  setTimeout(() => {
+    const result2 = ages(state);
+    console.log({result2});
+    expect(deepEqual(result2, expected1)).toBe(true);
+    setTimeout(() => {
+      const result3 = ages(state);
+      console.log({result3});
+      expect(deepEqual(result3, expected1)).toBe(true);
+      setTimeout(() => {
+        const result4 = ages(state);
+        console.log({result4});
+        expect(deepEqual(result4, expected2)).toBe(true);
+        setTimeout(() => {
+          const result5 = ages(state);
+          console.log({result5});
+          expect(deepEqual(result5, expected2)).toBe(true);
+          done();
+        }, 100);
+      }, 100);
+    }, 100);
+  }, 100);
+});
+
+
+test('sync by default returns undefined', done => {
+  let state = {employees: ['Mark Metzger'], maxAge: 15};
+  const ages = createAsyncSelector(
+    {...params2, sync: null}, 
+    s => s.employees, 
+    s => s.maxAge);
+
+  const expected1 = { 
+    value: undefined,
+    previous: undefined,
+    isWaiting: true,
+    isResolved: false,
+    isRejected: false, 
+  }
+
+  const result = ages(state);
+  expect(deepEqual(result, expected1)).toBe(true);
+  done();
+});

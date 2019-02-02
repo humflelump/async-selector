@@ -2,9 +2,6 @@ function validateParams(params) {
     if (typeof params !== 'object' || params === null) {
         throw new Error('An object of parameters must be passed in');
     }
-    if (typeof params.sync !== 'function') {
-        throw new Error('Looking for a function called "sync". This function is called to before the promise resolves');
-    }
     if (typeof params.async !== 'function') {
         throw new Error('Looking for a function called "async". This function returns a promise which handles asynchronous code');
     }
@@ -33,18 +30,19 @@ function createAsyncSelector(params, ...selectors) {
 
     // User inputs
     let {sync, async, onReject, onResolve, onCancel, shouldUseAsync, omitStatus, throttle} = params;
+    sync = typeof sync === 'function' ? sync : emptyFunction;
     onReject = typeof onReject === 'function' ? onReject : emptyFunction;
     onResolve = typeof onResolve === 'function' ? onResolve : emptyFunction;
     onCancel = typeof onCancel === 'function' ? onCancel : emptyFunction;
     shouldUseAsync = typeof shouldUseAsync === 'function' ? shouldUseAsync : () => true;
-    omitStatus = omitStatus === undefined ? false : omitStatus;
+    omitStatus = omitStatus === (void 0) ? false : omitStatus;
     throttle = typeof throttle === 'function' ? throttle : null;
 
     //selector state
     let memoizedResult = null;
     let isPromisePending = false;
     let oldInputs = null;
-    let previousResolution = undefined;
+    let previousResolution = void 0;
     let f = null;
 
     const func = (state, props, forceUpdate = false, internal = false) => {
@@ -53,7 +51,7 @@ function createAsyncSelector(params, ...selectors) {
         if (changed) {
             /*  Handle throttling / debouncing if required */
             if (f !== null && internal === false) {
-                f(state, forceUpdate);
+                f(state, props, forceUpdate);
                 memoizedResult = createResultObject(sync(...mapped), previousResolution, true, false, false, omitStatus);
                 return memoizedResult;
             }
@@ -90,7 +88,15 @@ function createAsyncSelector(params, ...selectors) {
         return memoizedResult;
     };
     if (throttle !== null && f === null) {
-        f = throttle((state, props) => func(state, props, true, true));
+        const throttled = throttle((state, props) => func(state, props, true, true));
+        let old = null;
+        f = (state, props) => {
+            const New = selectors.map(s => s(state, props));
+            if (hasChanged(old, New)) {
+                old = New;
+                throttled(state, props);
+            }
+        }
     }
     func.forceUpdate = (state, props) => {
         return func(state, props, true, false);
