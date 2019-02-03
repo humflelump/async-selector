@@ -28,6 +28,12 @@ const emptyFunction = () => {};
 function createAsyncSelector(params, ...selectors) {
     validateParams(params);
 
+
+    // if they passed in an array
+    if (selectors.length === 1 && Array.isArray(selectors[0])) {
+        selectors = selectors[0];
+    } 
+
     // User inputs
     let {sync, async, onReject, onResolve, onCancel, shouldUseAsync, omitStatus, throttle} = params;
     sync = typeof sync === 'function' ? sync : emptyFunction;

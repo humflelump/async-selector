@@ -1,6 +1,6 @@
 {
   "name": "async-selector",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Select values from databases using asynchronous selectors.",
   "main": "./dist/index.js",
   "scripts": {

@@ -905,8 +905,8 @@ test('sync by default returns undefined', done => {
   let state = {employees: ['Mark Metzger'], maxAge: 15};
   const ages = createAsyncSelector(
     {...params2, sync: null}, 
-    s => s.employees, 
-    s => s.maxAge);
+    [s => s.employees, 
+    s => s.maxAge]);
 
   const expected1 = { 
     value: undefined,
@@ -919,4 +919,41 @@ test('sync by default returns undefined', done => {
   const result = ages(state);
   expect(deepEqual(result, expected1)).toBe(true);
   done();
+});
+
+
+test('passed in state and props', done => {
+  let state = {employees: ['Mark Metzger'], maxAge: 15};
+  let props = { id: 'wow' };
+  const ages = createAsyncSelector(
+    {
+      async: (concat) => new Promise((resolve) => {
+        resolve(concat + '!');
+      }),
+    }, 
+    [(s, props) => s.maxAge + props.id]);
+
+  const expected1 = { 
+    value: undefined,
+    previous: undefined,
+    isWaiting: true,
+    isResolved: false,
+    isRejected: false, 
+  }
+
+  const expected2 = { 
+    value: '15wow!',
+    previous: '15wow!',
+    isWaiting: false,
+    isResolved: true,
+    isRejected: false, 
+  }
+
+  const result = ages(state, props);
+  expect(deepEqual(result, expected1)).toBe(true);
+  setTimeout(() => {
+    const result2 = ages(state, props);
+    expect(deepEqual(result2, expected2)).toBe(true);
+    done();
+  }, 10);
 });
