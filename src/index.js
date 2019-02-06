@@ -35,10 +35,11 @@ function createAsyncSelector(params, ...selectors) {
     } 
 
     // User inputs
-    let {sync, async, onReject, onResolve, onCancel, shouldUseAsync, omitStatus, throttle} = params;
+    let {sync, async, onReject, onResolve, onCancel, onFulfill, shouldUseAsync, omitStatus, throttle} = params;
     sync = typeof sync === 'function' ? sync : emptyFunction;
     onReject = typeof onReject === 'function' ? onReject : emptyFunction;
     onResolve = typeof onResolve === 'function' ? onResolve : emptyFunction;
+    onFulfill = typeof onFulfill === 'function' ? onFulfill : emptyFunction;
     onCancel = typeof onCancel === 'function' ? onCancel : emptyFunction;
     shouldUseAsync = typeof shouldUseAsync === 'function' ? shouldUseAsync : () => true;
     omitStatus = omitStatus === (void 0) ? false : omitStatus;
@@ -80,14 +81,17 @@ function createAsyncSelector(params, ...selectors) {
                     previousResolution = promiseResolution;
                     isPromisePending = false;
                     memoizedResult = createResultObject(promiseResolution, previousResolution, false, true, false, omitStatus);
-                    onResolve(promiseResolution, ...mapped)
+                    onResolve(promiseResolution, ...mapped);
                 }
+                onFulfill(promiseResolution, ...mapped);
             }).catch((promiseRejection) => {
+                console.log(promiseRejection);
                 if (!hasChanged(oldInputs, mapped)) {
                     isPromisePending = false;
                     memoizedResult = createResultObject(promiseRejection, previousResolution, false, false, true, omitStatus);
-                    onReject(promiseRejection, ...mapped)
+                    onReject(promiseRejection, ...mapped);
                 }
+                onFulfill(promiseRejection, ...mapped);
             })
 		}
 		// If the inputs didn't change, simply return the old memoized result
