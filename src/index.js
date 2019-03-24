@@ -48,6 +48,7 @@ function createAsyncSelector(params, ...selectors) {
     let memoizedResult = null;
     let isPromisePending = false;
     let oldInputs = null;
+    let oldPromise = null;
     let previousResolution = void 0;
     let f = null;
 
@@ -64,7 +65,7 @@ function createAsyncSelector(params, ...selectors) {
             /* //////////////////////////////////////////// */
             
             if (isPromisePending) {
-                onCancel(promise, ...oldInputs);
+                onCancel(oldPromise, ...oldInputs);
             }
             oldInputs = mapped;
 
@@ -74,6 +75,7 @@ function createAsyncSelector(params, ...selectors) {
                 return memoizedResult;
             }
             const promise = params.async(...mapped);
+            oldPromise = promise;
             isPromisePending = true;
             promise.then((promiseResolution) => {
                 if (!hasChanged(oldInputs, mapped)) {

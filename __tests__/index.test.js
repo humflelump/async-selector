@@ -874,24 +874,19 @@ test('debounces only memoized version', done => {
   }
 
   const result1 = ages(state);
-  console.log({result1});
   expect(deepEqual(result1, expected1)).toBe(true);
 
   setTimeout(() => {
     const result2 = ages(state);
-    console.log({result2});
     expect(deepEqual(result2, expected1)).toBe(true);
     setTimeout(() => {
       const result3 = ages(state);
-      console.log({result3});
       expect(deepEqual(result3, expected1)).toBe(true);
       setTimeout(() => {
         const result4 = ages(state);
-        console.log({result4});
         expect(deepEqual(result4, expected2)).toBe(true);
         setTimeout(() => {
           const result5 = ages(state);
-          console.log({result5});
           expect(deepEqual(result5, expected2)).toBe(true);
           done();
         }, 100);
@@ -956,4 +951,36 @@ test('passed in state and props', done => {
     expect(deepEqual(result2, expected2)).toBe(true);
     done();
   }, 10);
+});
+
+
+test('cancelling works as expected', done => {
+  let state = {employees: ['Mark Metzger'], maxAge: 15};
+  let success = false;
+  const ages = createAsyncSelector(
+    {
+      async: (n) => {
+        const promise = new Promise((resolve) => {
+          setTimeout(() => resolve(n), 50);
+        });
+        promise.id = 'abc';
+        return promise;
+      },
+      onCancel: (promise) => {
+        success = (promise.id === 'abc' && success === false);
+      }
+    }, 
+    [(s) => s.employees]
+  );
+
+  ages(state);
+  ages(state);
+  ages(state);
+  state.employees = [];
+  ages(state);
+  setTimeout(() => {
+    expect(success).toBe(true);
+    done();
+  });
+  
 });
