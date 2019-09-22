@@ -1,93 +1,43 @@
-
-
-/*
-
-Script to help generate the types.
-
-function range(n) {
-  const nums: any = [];
-  for (let i = 1; i <= n; i++) {
-    nums.push(i);
+function validateParams(params) {
+  if (typeof params !== "object" || params === null) {
+    throw new Error("An object of parameters must be passed in");
   }
-  return nums;
+  if (typeof params.async !== "function") {
+    throw new Error(
+      'Looking for a function called "async". This function returns a promise which handles asynchronous code'
+    );
+  }
 }
 
-function make(n) {
-  return `
-
-export function createAsyncSelector<State, ${range(n)
-    .map(n => `R${n}`)
-    .join(", ")}, AsyncReturn, Props = undefined, SyncReturn = undefined>(
-    params: {
-        sync?: ((${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => SyncReturn),
-        async: (${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => Promise<AsyncReturn>,
-        onResolve?: (result: AsyncReturn, ${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => void
-        onReject?: (error: any, ${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => void,
-        onCancel?: (promise: Promise<AsyncReturn>, ${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => void
-        shouldUseAsync?: (${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => boolean,
-        omitStatus?: boolean,
-        throttle?: (f: Function) => Function,
-    },
-    ${range(n)
-      .map(n => `s${n}: Selector<State, R${n}, Props>`)
-      .join(", ")}
-) : AsyncSelector<State, SyncReturn, AsyncReturn, Props>;
-
-export function createAsyncSelector<State, ${range(n)
-    .map(n => `R${n}`)
-    .join(", ")}, AsyncReturn, Props = undefined, SyncReturn = undefined>(
-    params: {
-        sync?: ((${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => SyncReturn),
-        async: (${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => Promise<AsyncReturn>,
-        onResolve?: (result: AsyncReturn, ${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => void
-        onReject?: (error: any, ${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => void,
-        onCancel?: (promise: Promise<AsyncReturn>, ${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => void
-        shouldUseAsync?: (${range(n)
-          .map(n => `val${n}: R${n}`)
-          .join(", ")}) => boolean,
-        omitStatus?: boolean,
-        throttle?: (f: Function) => Function,
-    },
-    selectors: [${range(n)
-      .map(n => `Selector<State, R${n}, Props>`)
-      .join(", ")}]
-) : AsyncSelector<State, SyncReturn, AsyncReturn, Props>;
-`;
+function hasChanged(oldValues, newValues) {
+  if (oldValues === null) return true;
+  if (oldValues.length !== newValues.length) return true;
+  for (let i = 0; i < oldValues.length; i++) {
+    if (newValues[i] !== oldValues[i]) {
+      return true;
+    }
+  }
+  return false;
 }
 
-const L = [];
-for (let i = 1; i <= 8; i++) {
-  L.push(make(i));
+function createResultObject(
+  value,
+  previous,
+  isWaiting,
+  isResolved,
+  isRejected,
+  omitStatus
+) {
+  if (omitStatus) return value;
+  return { value, previous, isWaiting, isResolved, isRejected };
 }
-console.log(L.join(""));
-*/
+
+const emptyFunction = () => {};
 
 
-export type Selector<S, R, P = undefined> = (state: S, props: P) => R;
+export declare type Selector<S, R, P = undefined> = (state: S, props: P) => R;
 
-export type AsyncSelectorResult<SyncReturn, AsyncReturn> = {
+export declare type AsyncSelectorResult<SyncReturn, AsyncReturn> = {
   isWaiting: boolean;
   isResolved: boolean;
   isRejected: boolean;
@@ -95,7 +45,7 @@ export type AsyncSelectorResult<SyncReturn, AsyncReturn> = {
   previous: SyncReturn | AsyncReturn | undefined;
 };
 
-export type AsyncSelector<State, SyncReturn, AsyncReturn, Props = undefined> = ((
+export declare type AsyncSelector<State, SyncReturn, AsyncReturn, Props = undefined> = ((
   state: State,
   props?: Props
 ) => AsyncSelectorResult<SyncReturn, AsyncReturn>) & {
@@ -121,25 +71,6 @@ export function createAsyncSelector<
   omitStatus?: boolean;
   throttle?: (f: Function) => Function;
 }): AsyncSelector<State, SyncReturn, AsyncReturn, Props>;
-
-export function createAsyncSelector<
-  State,
-  AsyncReturn,
-  Props = undefined,
-  SyncReturn = undefined
->(
-  params: {
-    sync?: () => SyncReturn;
-    async: () => Promise<AsyncReturn>;
-    onResolve?: (result: AsyncReturn) => void;
-    onReject?: (error: any) => void;
-    onCancel?: (promise: Promise<AsyncReturn>) => void;
-    shouldUseAsync?: () => boolean;
-    omitStatus?: boolean;
-    throttle?: (f: Function) => Function;
-  },
-  selectors: []
-): AsyncSelector<State, SyncReturn, AsyncReturn, Props>;
 
 export function createAsyncSelector<State, R1, AsyncReturn, Props = undefined, SyncReturn = undefined>(
     params: {
@@ -371,5 +302,134 @@ export function createAsyncSelector<State, R1, R2, R3, R4, R5, R6, R7, R8, Async
     },
     selectors: [Selector<State, R1, Props>, Selector<State, R2, Props>, Selector<State, R3, Props>, Selector<State, R4, Props>, Selector<State, R5, Props>, Selector<State, R6, Props>, Selector<State, R7, Props>, Selector<State, R8, Props>]
 ) : AsyncSelector<State, SyncReturn, AsyncReturn, Props>;
+
+export function createAsyncSelector(params, ...selectors) {
+  validateParams(params);
+
+  // if they passed in an array
+  if (selectors.length === 1 && Array.isArray(selectors[0])) {
+    selectors = selectors[0];
+  }
+
+  // User inputs
+  let {
+    sync,
+    async,
+    onReject,
+    onResolve,
+    onCancel,
+    shouldUseAsync,
+    omitStatus,
+    throttle
+  } = params;
+  sync = typeof sync === "function" ? sync : emptyFunction;
+  onReject = typeof onReject === "function" ? onReject : emptyFunction;
+  onResolve = typeof onResolve === "function" ? onResolve : emptyFunction;
+  onCancel = typeof onCancel === "function" ? onCancel : emptyFunction;
+  shouldUseAsync =
+    typeof shouldUseAsync === "function" ? shouldUseAsync : () => true;
+  omitStatus = omitStatus === void 0 ? false : omitStatus;
+  throttle = typeof throttle === "function" ? throttle : null;
+
+  //selector state
+  let memoizedResult = null;
+  let isPromisePending = false;
+  let oldInputs: any = null;
+  let oldPromise = null;
+  let previousResolution = void 0;
+  let f: any = null;
+
+  const func: any = (state, props, forceUpdate = false, internal = false) => {
+    const mapped = selectors.map(f => f(state, props));
+    const changed = forceUpdate || hasChanged(oldInputs, mapped);
+    if (changed) {
+      /*  Handle throttling / debouncing if required */
+      if (f !== null && internal === false) {
+        f(state, props, forceUpdate);
+        memoizedResult = createResultObject(
+          sync(...mapped),
+          previousResolution,
+          true,
+          false,
+          false,
+          omitStatus
+        );
+        return memoizedResult;
+      }
+      /* //////////////////////////////////////////// */
+
+      if (isPromisePending) {
+        onCancel(oldPromise, ...oldInputs);
+      }
+      oldInputs = mapped;
+
+      memoizedResult = createResultObject(
+        sync(...mapped),
+        previousResolution,
+        true,
+        false,
+        false,
+        omitStatus
+      );
+
+      if (!shouldUseAsync(...mapped)) {
+        return memoizedResult;
+      }
+      const promise = params.async(...mapped);
+      oldPromise = promise;
+      isPromisePending = true;
+      promise
+        .then(promiseResolution => {
+          if (!hasChanged(oldInputs, mapped)) {
+            previousResolution = promiseResolution;
+            isPromisePending = false;
+            memoizedResult = createResultObject(
+              promiseResolution,
+              previousResolution,
+              false,
+              true,
+              false,
+              omitStatus
+            );
+            onResolve(promiseResolution, ...mapped);
+          }
+        })
+        .catch(promiseRejection => {
+          if (!hasChanged(oldInputs, mapped)) {
+            isPromisePending = false;
+            memoizedResult = createResultObject(
+              promiseRejection,
+              previousResolution,
+              false,
+              false,
+              true,
+              omitStatus
+            );
+            onReject(promiseRejection, ...mapped);
+          }
+        });
+    }
+    // If the inputs didn't change, simply return the old memoized result
+    return memoizedResult;
+  };
+  if (throttle !== null && f === null) {
+    const throttled = throttle((state, props) =>
+      func(state, props, true, true)
+    );
+    let old: any = null;
+    f = (state, props) => {
+      const New = selectors.map(s => s(state, props));
+      if (hasChanged(old, New)) {
+        old = New;
+        throttled(state, props);
+      }
+    };
+  }
+  func.forceUpdate = (state, props) => {
+    return func(state, props, true, false);
+  };
+  func.getResult = () => memoizedResult;
+  return func;
+}
 
 export default createAsyncSelector;

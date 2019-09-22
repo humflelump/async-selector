@@ -1,19 +1,127 @@
-import createAsyncSelector from '../src/index';
-import _ from '../src/underscore';
+import createAsyncSelector from "../dist/index";
 
+/* random underscore functions */
+const _ = {};
+
+var restArguments = function(func, startIndex) {
+  startIndex = startIndex == null ? func.length - 1 : +startIndex;
+  return function() {
+    var length = Math.max(arguments.length - startIndex, 0),
+      rest = Array(length),
+      index = 0;
+    for (; index < length; index++) {
+      rest[index] = arguments[index + startIndex];
+    }
+    switch (startIndex) {
+      case 0:
+        return func.call(this, rest);
+      case 1:
+        return func.call(this, arguments[0], rest);
+      case 2:
+        return func.call(this, arguments[0], arguments[1], rest);
+    }
+    var args = Array(startIndex + 1);
+    for (index = 0; index < startIndex; index++) {
+      args[index] = arguments[index];
+    }
+    args[startIndex] = rest;
+    return func.apply(this, args);
+  };
+};
+
+_.delay = restArguments(function(func, wait, args) {
+  return setTimeout(function() {
+    return func.apply(null, args);
+  }, wait);
+});
+
+_.now =
+  Date.now ||
+  function() {
+    return new Date().getTime();
+  };
+
+_.debounce = function(func, wait, immediate) {
+  var timeout, result;
+
+  var later = function(context, args) {
+    timeout = null;
+    if (args) result = func.apply(context, args);
+  };
+
+  var debounced = restArguments(function(args) {
+    if (timeout) clearTimeout(timeout);
+    if (immediate) {
+      var callNow = !timeout;
+      timeout = setTimeout(later, wait);
+      if (callNow) result = func.apply(this, args);
+    } else {
+      timeout = _.delay(later, wait, this, args);
+    }
+
+    return result;
+  });
+
+  debounced.cancel = function() {
+    clearTimeout(timeout);
+    timeout = null;
+  };
+
+  return debounced;
+};
+
+_.throttle = function(func, wait, options) {
+  var timeout, context, args, result;
+  var previous = 0;
+  if (!options) options = {};
+
+  var later = function() {
+    previous = options.leading === false ? 0 : _.now();
+    timeout = null;
+    result = func.apply(context, args);
+    if (!timeout) context = args = null;
+  };
+
+  var throttled = function() {
+    var now = _.now();
+    if (!previous && options.leading === false) previous = now;
+    var remaining = wait - (now - previous);
+    context = this;
+    args = arguments;
+    if (remaining <= 0 || remaining > wait) {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      previous = now;
+      result = func.apply(context, args);
+      if (!timeout) context = args = null;
+    } else if (!timeout && options.trailing !== false) {
+      timeout = setTimeout(later, remaining);
+    }
+    return result;
+  };
+
+  throttled.cancel = function() {
+    clearTimeout(timeout);
+    previous = 0;
+    timeout = context = args = null;
+  };
+
+  return throttled;
+};
 
 const state = {
-  text: "Ma",
-}
+  text: "Ma"
+};
 let count = 0;
 
 function getEmployees(text) {
-
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const database = ["Mark Metzger", "Steven Miller"];
       if (text.length > 10) {
-        reject('Search Text Too Long');
+        reject("Search Text Too Long");
       } else {
         resolve(database.filter(name => name.includes(text)));
       }
@@ -26,108 +134,112 @@ function deepEqual(a, b) {
 }
 
 const params = {
-  sync:(text) => [],
-  async: getEmployees,
-}
+  sync: text => [],
+  async: getEmployees
+};
 
-test('Test createAsyncSelector is function', () => {
-  expect(typeof createAsyncSelector === 'function').toBe(true);
+test("Test createAsyncSelector is function", () => {
+  expect(typeof createAsyncSelector === "function").toBe(true);
 });
 
-test('Test createAsyncSelector default value', () => {
+test("Test createAsyncSelector default value", () => {
   const employees = createAsyncSelector(params, state => state.text);
 
-  const expected = { 
+  const expected = {
     value: [],
     previous: undefined,
     isWaiting: true,
     isResolved: false,
-    isRejected: false 
-  }
+    isRejected: false
+  };
   expect(deepEqual(employees(state), expected)).toBe(true);
 });
 
-test('Test createAsyncSelector async value', done => {
+test("Test createAsyncSelector async value", done => {
   const employees = createAsyncSelector(params, state => state.text);
 
-  const expected = { 
+  const expected = {
     value: ["Mark Metzger"],
     previous: ["Mark Metzger"],
     isWaiting: false,
     isResolved: true,
-    isRejected: false 
-  }
-  employees(state)
+    isRejected: false
+  };
+  employees(state);
   setTimeout(() => {
     try {
       expect(deepEqual(employees(state), expected)).toBe(true);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
     done();
-  }, 200)
-  
+  }, 200);
 });
 
-test('Test createAsyncSelector previous value', done => {
+test("Test createAsyncSelector previous value", done => {
   const employees = createAsyncSelector(params, state => state.text);
 
-  const expected = { 
+  const expected = {
     value: ["Steven Miller"],
     previous: ["Steven Miller"],
     isWaiting: false,
     isResolved: true,
-    isRejected: false 
-  }
+    isRejected: false
+  };
 
-  employees(state)
+  employees(state);
   setTimeout(() => {
-    employees(state)
+    employees(state);
     state.text = "St";
     employees(state);
     setTimeout(() => {
       try {
         expect(deepEqual(employees(state), expected)).toBe(true);
       } catch (e) {
-        done.fail(e)
+        done.fail(e);
       }
-      done()
-    }, 200)
-  }, 200)
+      done();
+    }, 200);
+  }, 200);
 });
 
-test('Test createAsyncSelector rejected', done => {
+test("Test createAsyncSelector rejected", done => {
   const employees = createAsyncSelector(params, state => state.text);
-  const state = {text: 'Mar'};
-  const expected = { 
+  const state = { text: "Mar" };
+  const expected = {
     value: "Search Text Too Long",
     previous: ["Mark Metzger"],
     isWaiting: false,
     isResolved: false,
-    isRejected: true 
-  }
+    isRejected: true
+  };
 
-  employees(state)
+  employees(state);
   setTimeout(() => {
-    employees(state)
+    employees(state);
     state.text = "Sttttttttttttt";
     employees(state);
     setTimeout(() => {
       try {
         expect(deepEqual(employees(state), expected)).toBe(true);
       } catch (e) {
-        done.fail(e)
+        done.fail(e);
       }
-      done()
-    }, 200)
-  }, 200)
+      done();
+    }, 200);
+  }, 200);
 });
 
-test('memoization', () => {
+test("memoization", () => {
   let count = 0;
-  let state = {text: 'gg'}
-  const sync = () => {count += 1};
-  const employees = createAsyncSelector({...params, sync}, state => state.text);
+  let state = { text: "gg" };
+  const sync = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, sync },
+    state => state.text
+  );
 
   count = 0;
   employees(state);
@@ -137,9 +249,14 @@ test('memoization', () => {
   expect(count).toBe(2);
 });
 
-test('memoization', () => {
-  const sync = () => {count += 1};
-  const employees = createAsyncSelector({...params, sync}, state => state.text);
+test("memoization", () => {
+  const sync = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, sync },
+    state => state.text
+  );
 
   count = 0;
   employees(state);
@@ -148,9 +265,14 @@ test('memoization', () => {
   expect(count).toBe(1);
 });
 
-test('lack of memoization', () => {
-  const sync = () => {count += 1};
-  const employees = createAsyncSelector({...params, sync}, state => state.text);
+test("lack of memoization", () => {
+  const sync = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, sync },
+    state => state.text
+  );
 
   count = 0;
   employees(state);
@@ -159,9 +281,14 @@ test('lack of memoization', () => {
   expect(count).toBe(3);
 });
 
-test('cancel', () => {
-  const onCancel = () => {count += 1};
-  const employees = createAsyncSelector({...params, onCancel}, state => state.text);
+test("cancel", () => {
+  const onCancel = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onCancel },
+    state => state.text
+  );
 
   count = 0;
   employees(state);
@@ -170,9 +297,14 @@ test('cancel', () => {
   expect(count).toBe(2);
 });
 
-test('cancel', done => {
-  const onCancel = () => {count += 1};
-  const employees = createAsyncSelector({...params, onCancel}, state => state.text);
+test("cancel", done => {
+  const onCancel = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onCancel },
+    state => state.text
+  );
 
   count = 0;
   employees(state);
@@ -182,22 +314,29 @@ test('cancel', done => {
     try {
       expect(count).toBe(1);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
-    done()
-    
+    done();
   }, 500);
 });
 
-test('omitStatus', () => {
+test("omitStatus", () => {
   const omitStatus = true;
-  const employees = createAsyncSelector({...params, omitStatus}, state => state.text);
+  const employees = createAsyncSelector(
+    { ...params, omitStatus },
+    state => state.text
+  );
   expect(deepEqual(employees(state), [])).toBe(true);
 });
 
-test('onResolve', () => {
-  const onResolve = () => {count += 1};
-  const employees = createAsyncSelector({...params, onResolve}, state => state.text);
+test("onResolve", () => {
+  const onResolve = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve },
+    state => state.text
+  );
   count = 0;
   employees(state);
   employees(state);
@@ -205,11 +344,16 @@ test('onResolve', () => {
   expect(count).toBe(0);
 });
 
-test('onResolve', done => {
+test("onResolve", done => {
   let count = 0;
-  const onResolve = () => {count += 1};
-  const employees = createAsyncSelector({...params, onResolve}, state => state.text);
-  
+  const onResolve = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve },
+    state => state.text
+  );
+
   employees(state);
   setTimeout(() => {
     employees(state);
@@ -219,18 +363,23 @@ test('onResolve', done => {
         try {
           expect(count).toBe(1);
         } catch (e) {
-          done.fail(e)
+          done.fail(e);
         }
-        done()
+        done();
       }, 200);
     }, 200);
   }, 200);
 });
 
-test('onResolve forceUpdate', done => {
+test("onResolve forceUpdate", done => {
   let count = 0;
-  const onResolve = () => {count += 1};
-  const employees = createAsyncSelector({...params, onResolve}, state => state.text);
+  const onResolve = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve },
+    state => state.text
+  );
   count = 0;
   employees(state);
   setTimeout(() => {
@@ -241,18 +390,23 @@ test('onResolve forceUpdate', done => {
         try {
           expect(count).toBe(3);
         } catch (e) {
-          done.fail(e)
+          done.fail(e);
         }
-        done()
+        done();
       }, 200);
     }, 200);
   }, 200);
 });
 
-test('onResolve', done => {
+test("onResolve", done => {
   let count = 0;
-  const onResolve = () => {count += 1};
-  const employees = createAsyncSelector({...params, onResolve}, state => state.text);
+  const onResolve = () => {
+    count += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve },
+    state => state.text
+  );
   employees(state);
   setTimeout(() => {
     employees(state);
@@ -262,35 +416,40 @@ test('onResolve', done => {
         try {
           expect(count).toBe(2);
         } catch (e) {
-          done.fail(e)
+          done.fail(e);
         }
-        done()
+        done();
       }, 200);
     }, 200);
   }, 10);
 });
 
-test('debounce', done => {
+test("debounce", done => {
   let c = 0;
   const throttle = f => _.debounce(f, 300);
-  const onResolve = () => {c += 1};
-  const employees = createAsyncSelector({...params, onResolve, throttle}, state => state.text);
-  employees({text: 'a'});
+  const onResolve = () => {
+    c += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve, throttle },
+    state => state.text
+  );
+  employees({ text: "a" });
   setTimeout(() => {
-    employees({text: 'b'});
+    employees({ text: "b" });
     setTimeout(() => {
-      employees({text: 'c'});
+      employees({ text: "c" });
       setTimeout(() => {
-        employees({text: 'd'});
+        employees({ text: "d" });
         setTimeout(() => {
-          employees({text: 'e'});
+          employees({ text: "e" });
           setTimeout(() => {
             try {
               expect(c).toBe(1);
             } catch (e) {
-              done.fail(e)
+              done.fail(e);
             }
-            done()
+            done();
           }, 400);
         }, 400);
       }, 200);
@@ -298,27 +457,32 @@ test('debounce', done => {
   }, 200);
 });
 
-test('debounce', done => {
+test("debounce", done => {
   let c = 0;
   const throttle = f => _.debounce(f, 300);
-  const onResolve = () => {c += 1};
-  const employees = createAsyncSelector({...params, onResolve, throttle}, state => state.text);
-  employees({text: 'a'});
+  const onResolve = () => {
+    c += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve, throttle },
+    state => state.text
+  );
+  employees({ text: "a" });
   setTimeout(() => {
-    employees({text: 'b'});
+    employees({ text: "b" });
     setTimeout(() => {
-      employees({text: 'c'});
+      employees({ text: "c" });
       setTimeout(() => {
-        employees({text: 'd'});
+        employees({ text: "d" });
         setTimeout(() => {
-          employees({text: 'e'});
+          employees({ text: "e" });
           setTimeout(() => {
             try {
               expect(c).toBe(3);
             } catch (e) {
-              done.fail(e)
+              done.fail(e);
             }
-            done()
+            done();
           }, 800);
         }, 400);
       }, 400);
@@ -326,27 +490,32 @@ test('debounce', done => {
   }, 200);
 });
 
-test('throttle', done => {
+test("throttle", done => {
   let c = 0;
   const throttle = f => _.throttle(f, 200);
-  const onResolve = (val) => {c += 1;};
-  const employees = createAsyncSelector({...params, onResolve, throttle}, state => state.text);
-  employees({text: 'a'});
+  const onResolve = val => {
+    c += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve, throttle },
+    state => state.text
+  );
+  employees({ text: "a" });
   setTimeout(() => {
-    employees({text: 'b'});
+    employees({ text: "b" });
     setTimeout(() => {
-      employees({text: 'c'});
+      employees({ text: "c" });
       setTimeout(() => {
-        employees({text: 'd'});
+        employees({ text: "d" });
         setTimeout(() => {
-          employees({text: 'e'});
+          employees({ text: "e" });
           setTimeout(() => {
             try {
               expect(c).toBe(2);
             } catch (e) {
-              done.fail(e)
+              done.fail(e);
             }
-            done()
+            done();
           }, 60);
         }, 60);
       }, 60);
@@ -354,113 +523,124 @@ test('throttle', done => {
   }, 60);
 });
 
-test('throttle', done => {
+test("throttle", done => {
   let c = 0;
-  const state = {text: 'Ma'};
+  const state = { text: "Ma" };
   const throttle = f => _.throttle(f, 50);
-  const onResolve = () => {c += 1};
-  const employees = createAsyncSelector({...params, onResolve, throttle}, state => state.text);
+  const onResolve = () => {
+    c += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve, throttle },
+    state => state.text
+  );
 
-  const expected = { 
+  const expected = {
     value: [],
-    previous: ['Mark Metzger'],
+    previous: ["Mark Metzger"],
     isWaiting: true,
     isResolved: false,
-    isRejected: false 
-  }
+    isRejected: false
+  };
 
   employees(state);
   setTimeout(() => {
-    employees({text: 'Marc'});
+    employees({ text: "Marc" });
     const result = employees(state);
     try {
       expect(deepEqual(result, expected)).toBe(true);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
-    done()
-  },200)
-
+    done();
+  }, 200);
 });
 
-test('throttle', done => {
+test("throttle", done => {
   let c = 0;
-  let state = {text: 'Ma'};
+  let state = { text: "Ma" };
   const throttle = f => _.throttle(f, 50);
-  const onResolve = () => {c += 1};
-  const employees = createAsyncSelector({...params, onResolve, throttle}, state => state.text);
+  const onResolve = () => {
+    c += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve, throttle },
+    state => state.text
+  );
 
-  const expected = { 
-    value: 'Search Text Too Long',
-    previous: ['Mark Metzger'],
+  const expected = {
+    value: "Search Text Too Long",
+    previous: ["Mark Metzger"],
     isWaiting: false,
     isResolved: false,
-    isRejected: true, 
-  }
+    isRejected: true
+  };
 
   employees(state);
   setTimeout(() => {
-    state = {text: 'aaaaaaaaaaaaaa'};
+    state = { text: "aaaaaaaaaaaaaa" };
     employees(state);
     setTimeout(() => {
       const result = employees(state);
       try {
         expect(deepEqual(result, expected)).toBe(true);
       } catch (e) {
-        done.fail(e)
+        done.fail(e);
       }
-      done()
-      
+      done();
     }, 500);
-  },200)
+  }, 200);
 });
 
-test('throttle memoization', done => {
+test("throttle memoization", done => {
   let c = 0;
-  let state = {text: 'Ma'};
+  let state = { text: "Ma" };
   const throttle = f => _.throttle(f, 50);
-  const onResolve = () => {c += 1};
-  const employees = createAsyncSelector({...params, onResolve, throttle}, state => state.text);
+  const onResolve = () => {
+    c += 1;
+  };
+  const employees = createAsyncSelector(
+    { ...params, onResolve, throttle },
+    state => state.text
+  );
 
-  const expected = { 
-    value: 'Search Text Too Long',
-    previous: ['Mark Metzger'],
+  const expected = {
+    value: "Search Text Too Long",
+    previous: ["Mark Metzger"],
     isWaiting: false,
     isResolved: false,
-    isRejected: true, 
-  }
+    isRejected: true
+  };
 
   employees(state);
   employees(state);
   employees(state);
   employees(state);
   setTimeout(() => {
-    state = {text: 'aaaaaaaaaaaaaa'};
+    state = { text: "aaaaaaaaaaaaaa" };
     employees(state);
     setTimeout(() => {
       const result = employees(state);
       try {
         expect(c).toBe(1);
       } catch (e) {
-        done.fail(e)
+        done.fail(e);
       }
       done();
     }, 500);
-  },200)
+  }, 200);
 });
 
-
 function getAges(employees, maxAge) {
-  
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const database = ["Mark Metzger", "Steven Miller"];
       const ages = [12, 34];
       if (maxAge < 3) {
-        reject('too young');
+        reject("too young");
       } else {
         const employeeAges = employees.map(name => {
-          return ages[database.indexOf(name)]
+          return ages[database.indexOf(name)];
         });
         resolve(employeeAges.filter(age => age <= maxAge));
       }
@@ -469,89 +649,91 @@ function getAges(employees, maxAge) {
 }
 
 const params2 = {
-  sync:(employees, ages) => [],
-  async: getAges,
-}
+  sync: (employees, ages) => [],
+  async: getAges
+};
 
-test('multiple params', () => {
+test("multiple params", () => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 40};
+  let state = { employees: ["Mark Metzger"], maxAge: 40 };
   const ages = createAsyncSelector(params2, s => s.employees, s => s.maxAge);
   const result = ages(state);
 
-  const expected = { 
+  const expected = {
     value: [],
     previous: undefined,
     isWaiting: true,
     isResolved: false,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
   expect(deepEqual(result, expected)).toBe(true);
-  
 });
 
-test('multiple params2', done => {
+test("multiple params2", done => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 40};
+  let state = { employees: ["Mark Metzger"], maxAge: 40 };
   const ages = createAsyncSelector(params2, s => s.employees, s => s.maxAge);
 
-  const expected = { 
+  const expected = {
     value: [12],
     previous: [12],
     isWaiting: false,
     isResolved: true,
-    isRejected: false, 
-  }
-  
+    isRejected: false
+  };
+
   ages(state);
   setTimeout(() => {
     const result = ages(state);
     try {
       expect(deepEqual(result, expected)).toBe(true);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
     done();
   }, 300);
 });
 
-test('multiple params3', done => {
+test("multiple params3", done => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 10};
+  let state = { employees: ["Mark Metzger"], maxAge: 10 };
   const ages = createAsyncSelector(params2, s => s.employees, s => s.maxAge);
   const result = ages(state);
 
-  const expected = { 
+  const expected = {
     value: [],
     previous: [],
     isWaiting: false,
     isResolved: true,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
   ages(state);
   setTimeout(() => {
     const result = ages(state);
-    
+
     try {
       expect(deepEqual(result, expected)).toBe(true);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
     done();
   }, 200);
 });
 
-test('debounced memoized', done => {
+test("debounced memoized", done => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 10};
-  const throttle = f => _.debounce(f, 100)
-  const onResolve = () => {c++}
+  let state = { employees: ["Mark Metzger"], maxAge: 10 };
+  const throttle = f => _.debounce(f, 100);
+  const onResolve = () => {
+    c++;
+  };
   const ages = createAsyncSelector(
-    {...params2, throttle, onResolve }, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, throttle, onResolve },
+    s => s.employees,
+    s => s.maxAge
+  );
 
   ages(state);
   setTimeout(() => {
@@ -566,7 +748,7 @@ test('debounced memoized', done => {
             try {
               expect(c).toBe(1);
             } catch (e) {
-              done.fail(e)
+              done.fail(e);
             }
             done();
           }, 122);
@@ -576,16 +758,18 @@ test('debounced memoized', done => {
   }, 120);
 });
 
-test('debounced memoized 2', done => {
+test("debounced memoized 2", done => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 10};
-  const throttle = f => _.debounce(f, 100)
-  const onResolve = () => {c++}
+  let state = { employees: ["Mark Metzger"], maxAge: 10 };
+  const throttle = f => _.debounce(f, 100);
+  const onResolve = () => {
+    c++;
+  };
   const ages = createAsyncSelector(
-    {...params2, throttle, onResolve }, 
-    s => s.employees, 
-    s => s.maxAge);
-
+    { ...params2, throttle, onResolve },
+    s => s.employees,
+    s => s.maxAge
+  );
 
   ages(state);
   ages(state);
@@ -601,7 +785,7 @@ test('debounced memoized 2', done => {
             try {
               expect(c).toBe(1);
             } catch (e) {
-              done.fail(e)
+              done.fail(e);
             }
             done();
           }, 122);
@@ -611,15 +795,18 @@ test('debounced memoized 2', done => {
   }, 120);
 });
 
-test('debounced memoized 3', done => {
+test("debounced memoized 3", done => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 10};
-  const throttle = f => _.debounce(f, 100)
-  const onResolve = () => {c++}
+  let state = { employees: ["Mark Metzger"], maxAge: 10 };
+  const throttle = f => _.debounce(f, 100);
+  const onResolve = () => {
+    c++;
+  };
   const ages = createAsyncSelector(
-    {...params2, throttle, onResolve }, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, throttle, onResolve },
+    s => s.employees,
+    s => s.maxAge
+  );
 
   ages(state);
   ages(state);
@@ -628,14 +815,14 @@ test('debounced memoized 3', done => {
     setTimeout(() => {
       ages(state);
       setTimeout(() => {
-        ages({employees: ['Mark Metzger'], maxAge: 9})
+        ages({ employees: ["Mark Metzger"], maxAge: 9 });
         setTimeout(() => {
           ages(state);
           setTimeout(() => {
             try {
               expect(c).toBe(2);
             } catch (e) {
-              done.fail(e)
+              done.fail(e);
             }
             done();
           }, 88);
@@ -645,23 +832,26 @@ test('debounced memoized 3', done => {
   }, 180);
 });
 
-test('debounced memoized 4', done => {
+test("debounced memoized 4", done => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 100};
-  const throttle = f => _.debounce(f, 100)
-  const onResolve = () => {c++}
+  let state = { employees: ["Mark Metzger"], maxAge: 100 };
+  const throttle = f => _.debounce(f, 100);
+  const onResolve = () => {
+    c++;
+  };
   const ages = createAsyncSelector(
-    {...params2, throttle, onResolve }, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, throttle, onResolve },
+    s => s.employees,
+    s => s.maxAge
+  );
 
-  const expected = { 
+  const expected = {
     value: [],
     previous: [],
     isWaiting: false,
     isResolved: true,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
   ages(state);
   ages(state);
@@ -670,7 +860,7 @@ test('debounced memoized 4', done => {
     setTimeout(() => {
       ages(state);
       setTimeout(() => {
-        const n = {employees: ['Mark Metzger'], maxAge: 9};
+        const n = { employees: ["Mark Metzger"], maxAge: 9 };
         ages(n);
         setTimeout(() => {
           ages(state);
@@ -679,7 +869,7 @@ test('debounced memoized 4', done => {
             try {
               expect(deepEqual(expected, result)).toBe(true);
             } catch (e) {
-              done.fail(e)
+              done.fail(e);
             }
             done();
           }, 88);
@@ -689,24 +879,26 @@ test('debounced memoized 4', done => {
   }, 180);
 });
 
-
-test('debounced memoized 5', done => {
+test("debounced memoized 5", done => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 10};
-  const throttle = f => _.debounce(f, 100)
-  const onResolve = () => {c++}
+  let state = { employees: ["Mark Metzger"], maxAge: 10 };
+  const throttle = f => _.debounce(f, 100);
+  const onResolve = () => {
+    c++;
+  };
   const ages = createAsyncSelector(
-    {...params2, throttle, onResolve }, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, throttle, onResolve },
+    s => s.employees,
+    s => s.maxAge
+  );
 
-  const expected = { 
+  const expected = {
     value: [],
     previous: [12],
     isWaiting: true,
     isResolved: false,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
   ages(state);
   ages(state);
@@ -715,16 +907,16 @@ test('debounced memoized 5', done => {
     setTimeout(() => {
       ages(state);
       setTimeout(() => {
-        const n = {employees: ['Mark Metzger'], maxAge: 20};
+        const n = { employees: ["Mark Metzger"], maxAge: 20 };
         ages(n);
         setTimeout(() => {
           ages(state);
           setTimeout(() => {
-            const result = ages({employees: ['Mark Metzger'], maxAge: 20});
+            const result = ages({ employees: ["Mark Metzger"], maxAge: 20 });
             try {
               expect(deepEqual(expected, result)).toBe(true);
             } catch (e) {
-              done.fail(e)
+              done.fail(e);
             }
             done();
           }, 88);
@@ -734,71 +926,83 @@ test('debounced memoized 5', done => {
   }, 180);
 });
 
-test('cancel result', () => {
-  let state = {employees: ['Mark Metzger'], maxAge: 10};
-  let result = null
-  const onCancel = (promise, n, a) => {result=[n,a]}
+test("cancel result", () => {
+  let state = { employees: ["Mark Metzger"], maxAge: 10 };
+  let result = null;
+  const onCancel = (promise, n, a) => {
+    result = [n, a];
+  };
   const ages = createAsyncSelector(
-    {...params2, onCancel }, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, onCancel },
+    s => s.employees,
+    s => s.maxAge
+  );
 
   ages(state);
-  ages({employees: ['Mark Metzger'], maxAge: 11});
-  expect(deepEqual(result, [['Mark Metzger'], 10])).toBe(true);
+  ages({ employees: ["Mark Metzger"], maxAge: 11 });
+  expect(deepEqual(result, [["Mark Metzger"], 10])).toBe(true);
 });
 
-test('resolve result', done => {
-  let state = {employees: ['Mark Metzger'], maxAge: 10};
-  let result = null
-  const onResolve = (r, n, a) => {result=[r,n,a]}
+test("resolve result", done => {
+  let state = { employees: ["Mark Metzger"], maxAge: 10 };
+  let result = null;
+  const onResolve = (r, n, a) => {
+    result = [r, n, a];
+  };
   const ages = createAsyncSelector(
-    {...params2, onResolve }, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, onResolve },
+    s => s.employees,
+    s => s.maxAge
+  );
 
   ages(state);
   ages(state);
   setTimeout(() => {
     try {
-      expect(deepEqual(result, [[], ['Mark Metzger'], 10])).toBe(true);
+      expect(deepEqual(result, [[], ["Mark Metzger"], 10])).toBe(true);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
     done();
   }, 200);
 });
 
-test('reject result', done => {
-  let state = {employees: ['Mark Metzger'], maxAge: 1};
-  let result = null
-  const onReject = (r, n, a) => {result=[r,n,a]}
+test("reject result", done => {
+  let state = { employees: ["Mark Metzger"], maxAge: 1 };
+  let result = null;
+  const onReject = (r, n, a) => {
+    result = [r, n, a];
+  };
   const ages = createAsyncSelector(
-    {...params2, onReject }, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, onReject },
+    s => s.employees,
+    s => s.maxAge
+  );
 
   ages(state);
   ages(state);
   setTimeout(() => {
     try {
-      expect(deepEqual(result, ['too young', ['Mark Metzger'], 1])).toBe(true);
+      expect(deepEqual(result, ["too young", ["Mark Metzger"], 1])).toBe(true);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
     done();
   }, 200);
 });
 
-test('throttled and forced', done => {
-  let state = {employees: ['Mark Metzger'], maxAge: 1};
-  let result = null
+test("throttled and forced", done => {
+  let state = { employees: ["Mark Metzger"], maxAge: 1 };
+  let result = null;
   const throttle = f => _.debounce(f, 150);
-  const onCancel = (r, n, a) => {result=[r,n,a]}
+  const onCancel = (r, n, a) => {
+    result = [r, n, a];
+  };
   const ages = createAsyncSelector(
-    {...params2, throttle, onCancel}, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, throttle, onCancel },
+    s => s.employees,
+    s => s.maxAge
+  );
 
   ages(state);
   ages.forceUpdate(state);
@@ -807,71 +1011,70 @@ test('throttled and forced', done => {
     try {
       expect(deepEqual(result, null)).toBe(true);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
     done();
   }, 200);
 });
 
-test('Throw error', () => {
+test("Throw error", () => {
   try {
     createAsyncSelector();
   } catch (e) {
-    expect(e.message).toBe('An object of parameters must be passed in');
+    expect(e.message).toBe("An object of parameters must be passed in");
   }
 });
 
-test('selector.getResult', done => {
+test("selector.getResult", done => {
   let c = 0;
-  let state = {employees: ['Mark Metzger'], maxAge: 10};
+  let state = { employees: ["Mark Metzger"], maxAge: 10 };
   const ages = createAsyncSelector(params2, s => s.employees, s => s.maxAge);
   const result = ages(state);
 
-  const expected = { 
+  const expected = {
     value: [],
     previous: [],
     isWaiting: false,
     isResolved: true,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
   ages(state);
   setTimeout(() => {
-    
     try {
       expect(deepEqual(ages.getResult(), expected)).toBe(true);
     } catch (e) {
-      done.fail(e)
+      done.fail(e);
     }
     done();
   }, 200);
 });
 
-
-test('debounces only memoized version', done => {
-  let state = {employees: ['Mark Metzger'], maxAge: 15};
-  let result = null
+test("debounces only memoized version", done => {
+  let state = { employees: ["Mark Metzger"], maxAge: 15 };
+  let result = null;
   const throttle = f => _.debounce(f, 150);
   const ages = createAsyncSelector(
-    {...params2, throttle}, 
-    s => s.employees, 
-    s => s.maxAge);
+    { ...params2, throttle },
+    s => s.employees,
+    s => s.maxAge
+  );
 
-  const expected1 = { 
+  const expected1 = {
     value: [],
     previous: undefined,
     isWaiting: true,
     isResolved: false,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
-  const expected2 = { 
+  const expected2 = {
     value: [12],
     previous: [12],
     isWaiting: false,
     isResolved: true,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
   const result1 = ages(state);
   expect(deepEqual(result1, expected1)).toBe(true);
@@ -895,54 +1098,54 @@ test('debounces only memoized version', done => {
   }, 100);
 });
 
+test("sync by default returns undefined", done => {
+  let state = { employees: ["Mark Metzger"], maxAge: 15 };
+  const ages = createAsyncSelector({ ...params2, sync: null }, [
+    s => s.employees,
+    s => s.maxAge
+  ]);
 
-test('sync by default returns undefined', done => {
-  let state = {employees: ['Mark Metzger'], maxAge: 15};
-  const ages = createAsyncSelector(
-    {...params2, sync: null}, 
-    [s => s.employees, 
-    s => s.maxAge]);
-
-  const expected1 = { 
+  const expected1 = {
     value: undefined,
     previous: undefined,
     isWaiting: true,
     isResolved: false,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
   const result = ages(state);
   expect(deepEqual(result, expected1)).toBe(true);
   done();
 });
 
-
-test('passed in state and props', done => {
-  let state = {employees: ['Mark Metzger'], maxAge: 15};
-  let props = { id: 'wow' };
+test("passed in state and props", done => {
+  let state = { employees: ["Mark Metzger"], maxAge: 15 };
+  let props = { id: "wow" };
   const ages = createAsyncSelector(
     {
-      async: (concat) => new Promise((resolve) => {
-        resolve(concat + '!');
-      }),
-    }, 
-    [(s, props) => s.maxAge + props.id]);
+      async: concat =>
+        new Promise(resolve => {
+          resolve(concat + "!");
+        })
+    },
+    [(s, props) => s.maxAge + props.id]
+  );
 
-  const expected1 = { 
+  const expected1 = {
     value: undefined,
     previous: undefined,
     isWaiting: true,
     isResolved: false,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
-  const expected2 = { 
-    value: '15wow!',
-    previous: '15wow!',
+  const expected2 = {
+    value: "15wow!",
+    previous: "15wow!",
     isWaiting: false,
     isResolved: true,
-    isRejected: false, 
-  }
+    isRejected: false
+  };
 
   const result = ages(state, props);
   expect(deepEqual(result, expected1)).toBe(true);
@@ -953,24 +1156,23 @@ test('passed in state and props', done => {
   }, 10);
 });
 
-
-test('cancelling works as expected', done => {
-  let state = {employees: ['Mark Metzger'], maxAge: 15};
+test("cancelling works as expected", done => {
+  let state = { employees: ["Mark Metzger"], maxAge: 15 };
   let success = false;
   const ages = createAsyncSelector(
     {
-      async: (n) => {
-        const promise = new Promise((resolve) => {
+      async: n => {
+        const promise = new Promise(resolve => {
           setTimeout(() => resolve(n), 50);
         });
-        promise.id = 'abc';
+        promise.id = "abc";
         return promise;
       },
-      onCancel: (promise) => {
-        success = (promise.id === 'abc' && success === false);
+      onCancel: promise => {
+        success = promise.id === "abc" && success === false;
       }
-    }, 
-    [(s) => s.employees]
+    },
+    [s => s.employees]
   );
 
   ages(state);
@@ -982,5 +1184,4 @@ test('cancelling works as expected', done => {
     expect(success).toBe(true);
     done();
   });
-  
 });

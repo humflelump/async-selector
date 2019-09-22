@@ -1,14 +1,15 @@
 {
   "name": "async-selector",
-  "version": "1.0.18",
+  "version": "1.0.23",
   "description": "Select values from databases using asynchronous selectors.",
   "main": "./dist/index.js",
-  "types": "./src/index.d.ts",
+  "types": "./dist/index.d.ts",
+  "homepage": "https://github.com/humflelump/inline-connect",
   "scripts": {
-    "build": "./node_modules/.bin/babel -d dist src/",
+    "start": "tsc --watch",
+    "build": "tsc",
     "test": "jest",
-    "test:coverage": "jest --coverage && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
-    "prepublish": "npm run test && npm run build"
+    "prepublish": "npm run build && npm run test"
   },
   "repository": {
     "type": "git",
@@ -23,11 +24,12 @@
   ],
   "author": "Mark Metzger markmetzger@utexas.edu",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/humflelump/async-selector/issues"
+  "babel": {
+    "presets": [
+      "es2015",
+      "react"
+    ]
   },
-  "homepage": "https://github.com/humflelump/async-selector#readme",
-  "dependencies": {},
   "devDependencies": {
     "babel-cli": "^6.24.1",
     "babel-jest": "^20.0.3",
@@ -37,18 +39,5 @@
     "jest": "^20.0.4",
     "jest-cli": "^20.0.4",
     "underscore": "^1.9.0"
-  },
-  "jest": {
-    "collectCoverageFrom": [
-      "src/**/*.js"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "statements": 90,
-        "branches": 90,
-        "functions": 90,
-        "lines": 90
-      }
-    }
   }
 }
