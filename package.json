@@ -3,6 +3,7 @@
   "version": "1.0.18",
   "description": "Select values from databases using asynchronous selectors.",
   "main": "./dist/index.js",
+  "types": "./src/index.d.ts",
   "scripts": {
     "build": "./node_modules/.bin/babel -d dist src/",
     "test": "jest",
