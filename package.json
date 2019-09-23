@@ -1,10 +1,10 @@
 {
   "name": "async-selector",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "description": "Select values from databases using asynchronous selectors.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "homepage": "https://github.com/humflelump/inline-connect",
+  "homepage": "https://github.com/humflelump/async-selector.git",
   "scripts": {
     "start": "tsc --watch",
     "build": "tsc",
